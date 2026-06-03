@@ -15,7 +15,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Allow public routes
-  if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
+  if (pathname === '/' || PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
     // If already logged in and hitting /login, redirect to dashboard
     if (pathname === '/login') {
       const token = request.cookies.get(COOKIE_NAME)?.value

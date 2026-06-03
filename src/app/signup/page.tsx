@@ -1,10 +1,11 @@
 'use client'
 
 // src/app/signup/page.tsx
-// Redesigned: Awwwards-style clean signup page
+// Redesigned: Awwwards-style split layout signup
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -47,38 +48,46 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#fafafa] px-4 selection:bg-zinc-900 selection:text-white">
-        <div className="relative w-full max-w-md rounded-3xl border border-white/50 bg-white/70 p-10 text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
-            <svg className="h-8 w-8 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="flex min-h-screen items-center justify-center bg-white px-4 selection:bg-zinc-900 selection:text-white">
+        <div className="text-center">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50">
+            <svg className="h-10 w-10 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900 mb-2">Account Created</h2>
-          <p className="text-zinc-500 font-medium">Redirecting to login…</p>
+          <h2 className="text-3xl font-extrabold tracking-tight text-zinc-900 mb-2">Account Created</h2>
+          <p className="text-zinc-500 font-medium">Redirecting you to login…</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#fafafa] px-4 selection:bg-zinc-900 selection:text-white">
-      {/* Soft aesthetic background elements */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden flex items-center justify-center">
-        <div className="absolute h-[600px] w-[600px] rounded-full bg-blue-50/50 blur-3xl -translate-x-1/3 -translate-y-1/4" />
-        <div className="absolute h-[500px] w-[500px] rounded-full bg-indigo-50/50 blur-3xl translate-x-1/3 translate-y-1/4" />
+    <div className="flex min-h-screen bg-white selection:bg-zinc-900 selection:text-white">
+      
+      {/* Left side: Image */}
+      <div className="relative hidden w-0 flex-1 lg:block bg-zinc-50">
+        <Image
+          src="/medchem_hero.png"
+          alt="Modern MedChem Laboratory"
+          fill
+          className="object-cover object-center scale-x-[-1]" 
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/40 to-transparent" />
       </div>
 
-      <div className="relative w-full max-w-md z-10">
-        <div className="rounded-3xl border border-white/50 bg-white/70 p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl">
-          <div className="mb-10 text-center">
-            <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-900 shadow-lg shadow-zinc-900/20">
+      {/* Right side: Form */}
+      <div className="flex w-full flex-col justify-center px-4 py-12 sm:px-6 lg:w-[45%] lg:flex-none lg:px-20 xl:px-24">
+        <div className="mx-auto w-full max-w-sm lg:w-96">
+          <div className="mb-10">
+            <Link href="/" className="mb-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-900 shadow-lg shadow-zinc-900/20 hover:scale-105 transition-transform">
               <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
               </svg>
-            </div>
+            </Link>
             <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900">Create Account</h1>
-            <p className="mt-2 text-sm font-medium text-zinc-500">Join MedChem as a new Seller</p>
+            <p className="mt-2 text-sm font-medium text-zinc-500">Join MedChem as a new Seller.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
