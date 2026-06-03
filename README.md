@@ -1,226 +1,144 @@
 # MedChem — Inventory & Order Management System
 
-A full-stack inventory and quotation management platform for medical/chemical supply businesses. Built with **Next.js 16 App Router**, **Neon PostgreSQL**, **Tailwind CSS**, and **JWT authentication**.
+A full-stack inventory and quotation management platform for medical/chemical supply businesses. Built for the AasaMedChem Hackathon assignment.
 
 ---
 
-## Features
+## 🚀 Project Overview & Features
 
-- 🔐 **JWT Auth** — HTTP-only cookies, 7-day expiry, HS256 signed
-- 👤 **Two roles** — Admin (manage everything) & Seller (browse + order)
-- 📦 **Product catalog** — with categories, dimensions, base units
-- 🧮 **Exact arithmetic** — `NUMERIC(20,6)` for all prices & quantities
-- ⚖️ **Smart unit conversion** — g↔kg, mL↔L, server-side before saving
-- 🛒 **Cart drawer** — live totals, unit selector, conversion display
-- 📄 **Quotation management** — full audit trail with ordered & base quantities
-- 📊 **Admin dashboard** — stat cards, revenue tracking, recent orders
-- 🗃️ **Auto-init DB** — schema + seed data created on first login, no migration step
+MedChem is a B2B quotation and inventory management platform that handles complex unit conversions (weight, volume, count) and high-precision pricing.
 
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 16 App Router (TypeScript) |
-| Database | Neon PostgreSQL (`@neondatabase/serverless`) |
-| Styling | Tailwind CSS v4 |
-| Auth | `jose` (JWT HS256) + `bcryptjs` (password hashing) |
-| Deployment | Vercel |
+**Key Features:**
+- 🔐 **JWT Auth** — HTTP-only cookies, 7-day expiry, role-based routing (`proxy.ts`).
+- 👤 **Two roles** — Admin (manage inventory & approve orders) & Seller (browse catalog & place quotes).
+- ⚖️ **Smart Unit Engine** — g↔kg, mL↔L conversions done server-side before saving to the DB.
+- 🛒 **Cart Drawer** — Live line totals, flexible unit selectors, and instant conversion displays (e.g., `2 kg = 2000 g`).
+- 📄 **Quotation Workflow** — Full audit trail showing exactly what the user typed (`quantity_in_ordered_unit`) vs what was calculated for storage (`quantity_in_base_unit`).
+- 🗃️ **Idempotent Auto-Init DB** — Schema and demo seed data are created automatically on the very first login. No manual migration scripts needed.
 
 ---
 
-## Database Schema
+## 🏗️ High-Level System Design
 
-### `users`
-| Column | Type | Notes |
+The application follows a standard modern Next.js architecture:
+
+1. **Frontend (Client Components)**: Built with React and Tailwind CSS. State management (like the Cart Drawer) uses `useState`. No `localStorage` is used; all sensitive data lives on the server.
+2. **Backend (API Routes)**: Next.js Route Handlers (`/api/...`) handle business logic, JWT verification, and unit conversions.
+3. **Database (Neon PostgreSQL)**: Connected via `@neondatabase/serverless` using raw SQL (no ORM). 
+4. **Security Layer**: `src/proxy.ts` (Next.js 16's replacement for Middleware) intercepts every request to protect protected routes and enforce role boundaries before the request ever hits a React component.
+
+---
+
+## 🗄️ Database Schema & Data Types
+
+The database uses raw PostgreSQL. **We explicitly chose `NUMERIC(20,6)`** for all financial and physical measurements. 
+
+**Why `NUMERIC(20,6)` instead of `FLOAT` or `DECIMAL`?**
+Floating-point types (`REAL`, `DOUBLE PRECISION`) are susceptible to rounding errors (e.g., `0.1 + 0.2 = 0.30000000000000004`). In a B2B system handling bulk chemicals, exact arithmetic is critical. `NUMERIC(20,6)` allows up to 14 digits before the decimal and exactly 6 digits after, ensuring massive wholesale orders and microscopic chemical measurements are both perfectly accurate.
+
+### Key Tables
+
+#### `products`
+| Column | Type | Description |
 |---|---|---|
 | id | SERIAL PK | |
-| email | VARCHAR(255) UNIQUE | |
-| password_hash | VARCHAR(255) | bcrypt, 12 rounds |
-| name | VARCHAR(255) | |
-| role | VARCHAR(10) | `admin` or `seller` |
-| created_at | TIMESTAMPTZ | |
-
-### `categories`
-| Column | Type |
-|---|---|
-| id | SERIAL PK |
-| name | VARCHAR(255) UNIQUE |
-| description | TEXT |
-
-### `products`
-| Column | Type | Notes |
-|---|---|---|
-| id | SERIAL PK | |
-| name | VARCHAR(255) | |
 | sku | VARCHAR(100) UNIQUE | |
-| category_id | INTEGER FK | → categories |
 | dimension | VARCHAR(20) | `weight`, `volume`, `count` |
-| base_unit | VARCHAR(10) | `g`, `kg`, `mL`, `L`, `unit` |
-| price_per_base_unit | **NUMERIC(20,6)** | INR per one base unit |
-| stock_in_base_unit | **NUMERIC(20,6)** | Always stored in base unit |
-| min_order_qty | **NUMERIC(20,6)** | |
-| is_active | BOOLEAN | Soft delete flag |
+| base_unit | VARCHAR(10) | `g`, `mL`, `unit` |
+| price_per_base_unit | **NUMERIC(20,6)** | Exact INR price per 1 base unit |
+| stock_in_base_unit | **NUMERIC(20,6)** | Inventory is strictly tracked in base units |
 
-### `quotations`
-| Column | Type | Notes |
+#### `quotation_items` (The Audit Trail)
+| Column | Type | Description |
 |---|---|---|
-| id | SERIAL PK | |
-| seller_id | INTEGER FK | → users |
-| status | VARCHAR(20) | `pending`, `approved`, `rejected`, `fulfilled` |
-| notes | TEXT | |
-| total_amount | **NUMERIC(20,6)** | Sum of all line totals |
-
-### `quotation_items`
-| Column | Type | Notes |
-|---|---|---|
-| id | SERIAL PK | |
-| quotation_id | INTEGER FK | → quotations |
-| product_id | INTEGER FK | → products |
-| ordered_unit | VARCHAR(10) | Unit the seller chose (e.g. `kg`) |
-| quantity_in_ordered_unit | **NUMERIC(20,6)** | What the seller typed (e.g. 2) |
-| quantity_in_base_unit | **NUMERIC(20,6)** | Converted value (e.g. 2000 for 2kg→g) |
-| price_per_base_unit | **NUMERIC(20,6)** | Price snapshot at order time |
+| ordered_unit | VARCHAR(10) | The unit the user selected in UI (e.g. `kg`) |
+| quantity_in_ordered_unit | **NUMERIC(20,6)** | Exactly what they typed (e.g. `2`) |
+| quantity_in_base_unit | **NUMERIC(20,6)** | The converted value (e.g. `2000`) |
+| price_per_base_unit | **NUMERIC(20,6)** | Price snapshot at the time of the order |
 | line_total | **NUMERIC(20,6)** | `quantity_in_base_unit × price_per_base_unit` |
 
 ---
 
-## Unit Storage Strategy
+## ⚖️ Unit Storage and Conversion Strategy
 
-All stock and prices are **always stored in base units**:
+To prevent rounding issues and fragmented logic, **all inventory and pricing is standardized to a "Base Unit" at the database level.**
 
-| Dimension | Base Unit | Compatible Units |
-|---|---|---|
-| weight | **g** | g, kg |
-| volume | **mL** | mL, L |
-| count | **unit** | unit |
+| Dimension | Base Unit (DB) | Allowed UI Units | Conversion Factor |
+|---|---|---|---|
+| weight | **g** | g, kg | 1 kg = 1000 g |
+| volume | **mL** | mL, L | 1 L = 1000 mL |
+| count | **unit** | unit | 1 unit = 1 unit |
 
-**Conversion factors** (`src/lib/units.ts`):
-```ts
-UNIT_TO_BASE = { g: 1, kg: 1000, mL: 1, L: 1000, unit: 1 }
-```
-
-### Conversion Logic
-
-When a seller adds "2 kg" of a product whose base unit is `g`:
-1. `convertToBase(2, 'kg')` → `2 × 1000 = 2000`
-2. Stored as `quantity_in_base_unit = 2000`
-3. Line total = `2000 × price_per_g`
-4. Displayed back as "2 kg" (smart display: ≥1000g shown as kg)
+### How conversions are applied:
+1. **Creation (Admin)**: The admin sets a price per *Base Unit* (e.g., ₹0.05 per `g`).
+2. **Ordering (Seller UI)**: The seller selects `kg` and enters `2`. 
+3. **Submission (API)**: The API receives `{ ordered_unit: 'kg', quantity: 2 }`.
+4. **Server-Side Conversion (`src/lib/units.ts`)**:
+   - `convertToBase(2, 'kg')` → returns `2000` (quantity_in_base_unit).
+   - `calculateLineTotal(2, 'kg', 0.05)` → returns `2000 * 0.05 = ₹100.00`.
+5. **Storage**: Both the raw input (`2`, `kg`) and the converted data (`2000`, `100.00`) are saved to PostgreSQL.
+6. **Display Rules**: When rendering prices, no rounding happens in the DB. The UI uses `.toFixed(2)` only at the final display step via the `formatINR()` helper.
 
 ---
 
-## Local Setup
+## 💻 Setup Instructions (Local & Vercel)
 
 ### 1. Prerequisites
 - Node.js 18+
-- A [Neon](https://neon.tech) PostgreSQL database (free tier works)
+- A free [Neon PostgreSQL](https://neon.tech) database.
 
-### 2. Clone & install
+### 2. Local Installation
 ```bash
-git clone <your-repo-url>
+git clone <repo-url>
 cd aasamedcam
 npm install
 ```
 
-### 3. Configure environment
+### 3. Environment Variables
+Copy the template file:
 ```bash
 cp .env.example .env.local
 ```
-
-Edit `.env.local`:
+Edit `.env.local` with your Neon Connection String and a random JWT secret:
 ```env
-DATABASE_URL=postgres://user:password@host.neon.tech/dbname?sslmode=require
-JWT_SECRET=your_random_secret_at_least_32_characters
+DATABASE_URL=postgresql://user:password@host.neon.tech/dbname?sslmode=require
+JWT_SECRET=any_random_string_at_least_32_characters_long
 ```
 
-### 4. Run development server
+### 4. Start the Dev Server
 ```bash
 npm run dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000)
-
-**The database schema and seed data are created automatically on first login — no migration step needed.**
+Open [http://localhost:3000](http://localhost:3000). 
+**Note:** There are no migration scripts to run. Simply log in for the first time, and the system will automatically run `CREATE TABLE IF NOT EXISTS` and seed the demo accounts.
 
 ---
 
-## Demo Credentials
+## 🚀 Vercel Deployment
 
-| Role | Email | Password |
-|---|---|---|
-| Admin | admin@medchem.com | admin123 |
-| Seller | seller@medchem.com | seller123 |
-
-Use the **Quick Access** buttons on the login page to auto-fill these credentials.
-
----
-
-## API Routes
-
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| POST | `/api/auth/login` | Public | Login + set cookie |
-| POST | `/api/auth/logout` | Any | Clear cookie |
-| GET | `/api/auth/me` | Any | Current session |
-| GET | `/api/categories` | Auth | All categories |
-| GET | `/api/products` | Auth | Products with filters |
-| POST | `/api/products` | Admin | Create product |
-| PUT | `/api/products/[id]` | Admin | Update product |
-| DELETE | `/api/products/[id]` | Admin | Soft delete |
-| GET | `/api/quotations` | Auth | Admin=all, Seller=own |
-| POST | `/api/quotations` | Seller | Submit quotation |
-| PATCH | `/api/quotations/[id]` | Admin | Update status |
-| GET | `/api/stats` | Admin | Dashboard stats |
+1. Push this repository to GitHub.
+2. Go to your [Vercel Dashboard](https://vercel.com) and click **Add New → Project**.
+3. Import the repository.
+4. Under **Environment Variables**, add:
+   - `DATABASE_URL` (Your Neon connection string)
+   - `JWT_SECRET` (A strong, random password)
+5. Click **Deploy**. The Next.js build process handles everything.
+6. Visit your deployed URL and log in. The DB initializes automatically!
 
 ---
 
-## Vercel Deployment
+## 🔐 How to use the app (Demo Flow)
 
-1. Push your code to GitHub
-2. Import the repository in [Vercel](https://vercel.com)
-3. Add environment variables in Vercel dashboard:
-   - `DATABASE_URL` — your Neon connection string
-   - `JWT_SECRET` — random secret (min 32 chars)
-4. Deploy — the DB auto-initializes on first login
-
-> **Note:** Do NOT commit `.env.local` — it's in `.gitignore`
-
----
-
-## Project Structure
-
-```
-src/
-├── app/
-│   ├── api/
-│   │   ├── auth/login, logout, me
-│   │   ├── products/[id]
-│   │   ├── quotations/[id]
-│   │   ├── categories
-│   │   └── stats
-│   ├── admin/
-│   │   ├── layout.tsx
-│   │   ├── page.tsx          # Dashboard
-│   │   ├── products/         # CRUD table
-│   │   └── quotations/       # Status management
-│   ├── seller/
-│   │   ├── layout.tsx
-│   │   ├── products/         # Grid + cart
-│   │   └── quotations/       # History
-│   └── login/
-├── components/
-│   ├── Navbar.tsx
-│   ├── StatusBadge.tsx
-│   ├── StatCard.tsx
-│   └── CartDrawer.tsx
-├── lib/
-│   ├── db.ts                 # Neon client
-│   ├── auth.ts               # JWT helpers
-│   ├── schema.ts             # CREATE TABLE + seed
-│   └── units.ts              # Conversion utilities
-├── types/
-│   └── index.ts              # Shared TS interfaces
-└── middleware.ts             # Route protection
-```
+1. **Log in as Admin**
+   - Click the "Admin" quick-fill button on the login screen, or use `admin@medchem.com` / `admin123`.
+   - Go to **Products** and add a new item (e.g., "Industrial Salt", Weight, Base Unit `g`, Price `0.05`).
+2. **Log in as Seller**
+   - Use the "Seller" quick-fill button, or `seller@medchem.com` / `seller123`.
+   - Go to the Product Catalog. Find the Salt. Click **Add to Cart**.
+   - Open the **Cart** (top right button). 
+   - Change the unit from `g` to `kg`. Type in `5`. Watch the line total update live.
+   - Click **Place Quotation**.
+3. **Approve the Order**
+   - Log back in as Admin. Go to **Quotations**.
+   - Expand the new quotation to see the exact breakdown (5 kg ordered = 5000 g base).
+   - Click the **Approved** status button to finalize the workflow.
