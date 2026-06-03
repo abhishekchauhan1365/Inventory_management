@@ -4,9 +4,9 @@
 // Redesigned: Awwwards-style minimal white navbar
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import type { SessionPayload } from '@/types'
+import type { Session } from '@/types'
 
-export default function Navbar({ session }: { session: SessionPayload }) {
+export default function Navbar({ session }: { session: Session }) {
   const router = useRouter()
   const pathname = usePathname()
 
