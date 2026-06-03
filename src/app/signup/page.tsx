@@ -15,6 +15,7 @@ export default function SignupPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [role, setRole] = useState<'seller' | 'admin'>('seller')
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -25,7 +26,7 @@ export default function SignupPage() {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, role }),
       })
 
       const data = await res.json()
@@ -87,10 +88,39 @@ export default function SignupPage() {
               </svg>
             </Link>
             <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900">Create Account</h1>
-            <p className="mt-2 text-sm font-medium text-zinc-500">Join MedChem as a new Seller.</p>
+            <p className="mt-2 text-sm font-medium text-zinc-500">Join MedChem to manage your inventory and orders.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-900 mb-2 uppercase tracking-wide">
+                Account Type
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRole('seller')}
+                  className={`rounded-xl border px-4 py-3 text-sm font-bold transition-all ${
+                    role === 'seller'
+                      ? 'border-zinc-900 bg-zinc-900 text-white shadow-md'
+                      : 'border-zinc-200 bg-zinc-50 text-zinc-500 hover:border-zinc-300 hover:text-zinc-900'
+                  }`}
+                >
+                  Seller
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole('admin')}
+                  className={`rounded-xl border px-4 py-3 text-sm font-bold transition-all ${
+                    role === 'admin'
+                      ? 'border-zinc-900 bg-zinc-900 text-white shadow-md'
+                      : 'border-zinc-200 bg-zinc-50 text-zinc-500 hover:border-zinc-300 hover:text-zinc-900'
+                  }`}
+                >
+                  Admin
+                </button>
+              </div>
+            </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-900 mb-2 uppercase tracking-wide">
                 Full Name

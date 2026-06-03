@@ -27,10 +27,11 @@ export async function POST(request: NextRequest) {
     // Hash password and insert
     const hash = await bcrypt.hash(password, 12)
     
-    // By default, new signups are 'seller's. Admins are created manually or via seed.
+    const requestedRole = body.role === 'admin' ? 'admin' : 'seller'
+
     await sql`
       INSERT INTO users (name, email, password_hash, role)
-      VALUES (${name}, ${email}, ${hash}, 'seller')
+      VALUES (${name}, ${email}, ${hash}, ${requestedRole})
     `
 
     return Response.json({ success: true }, { status: 201 })
