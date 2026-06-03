@@ -1,6 +1,7 @@
 'use client'
 
 // src/app/signup/page.tsx
+// Redesigned: Awwwards-style clean signup page
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -46,68 +47,73 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0f172a] px-4">
-        <div className="relative w-full max-w-md rounded-2xl border border-slate-700/60 bg-slate-900/80 p-10 text-center shadow-2xl backdrop-blur-xl">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20">
-            <svg className="h-8 w-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      <div className="flex min-h-screen items-center justify-center bg-[#fafafa] px-4 selection:bg-zinc-900 selection:text-white">
+        <div className="relative w-full max-w-md rounded-3xl border border-white/50 bg-white/70 p-10 text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
+            <svg className="h-8 w-8 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Account Created</h2>
-          <p className="text-slate-400">Redirecting to login…</p>
+          <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900 mb-2">Account Created</h2>
+          <p className="text-zinc-500 font-medium">Redirecting to login…</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0f172a] px-4">
-      {/* Background blobs */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -left-40 -top-40 h-80 w-80 rounded-full bg-blue-600/20 blur-3xl" />
-        <div className="absolute -right-40 top-20 h-96 w-96 rounded-full bg-indigo-600/15 blur-3xl" />
-        <div className="absolute bottom-0 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-purple-600/10 blur-3xl" />
+    <div className="flex min-h-screen items-center justify-center bg-[#fafafa] px-4 selection:bg-zinc-900 selection:text-white">
+      {/* Soft aesthetic background elements */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden flex items-center justify-center">
+        <div className="absolute h-[600px] w-[600px] rounded-full bg-blue-50/50 blur-3xl -translate-x-1/3 -translate-y-1/4" />
+        <div className="absolute h-[500px] w-[500px] rounded-full bg-indigo-50/50 blur-3xl translate-x-1/3 translate-y-1/4" />
       </div>
 
-      <div className="relative w-full max-w-md">
-        <div className="rounded-2xl border border-slate-700/60 bg-slate-900/80 p-8 shadow-2xl shadow-black/40 backdrop-blur-xl">
-          <div className="mb-8 flex flex-col items-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-purple-500/30">
-              <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+      <div className="relative w-full max-w-md z-10">
+        <div className="rounded-3xl border border-white/50 bg-white/70 p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl">
+          <div className="mb-10 text-center">
+            <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-900 shadow-lg shadow-zinc-900/20">
+              <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-white">Create Account</h1>
-            <p className="mt-1 text-sm text-slate-400">Join MedChem as a new Seller</p>
+            <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900">Create Account</h1>
+            <p className="mt-2 text-sm font-medium text-zinc-500">Join MedChem as a new Seller</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Full Name</label>
+              <label className="block text-xs font-semibold text-zinc-900 mb-2 uppercase tracking-wide">
+                Full Name
+              </label>
               <input
                 required
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="John Doe"
-                className="w-full rounded-xl border border-slate-700 bg-slate-800/70 px-4 py-3 text-sm text-white placeholder-slate-500 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3.5 text-sm font-medium text-zinc-900 placeholder-zinc-400 outline-none transition-all focus:border-zinc-900 focus:bg-white focus:ring-1 focus:ring-zinc-900"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Email Address</label>
+              <label className="block text-xs font-semibold text-zinc-900 mb-2 uppercase tracking-wide">
+                Email Address
+              </label>
               <input
                 required
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="you@company.com"
-                className="w-full rounded-xl border border-slate-700 bg-slate-800/70 px-4 py-3 text-sm text-white placeholder-slate-500 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                placeholder="you@example.com"
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3.5 text-sm font-medium text-zinc-900 placeholder-zinc-400 outline-none transition-all focus:border-zinc-900 focus:bg-white focus:ring-1 focus:ring-zinc-900"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
+              <label className="block text-xs font-semibold text-zinc-900 mb-2 uppercase tracking-wide">
+                Password
+              </label>
               <input
                 required
                 type="password"
@@ -115,15 +121,12 @@ export default function SignupPage() {
                 onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
                 minLength={6}
-                className="w-full rounded-xl border border-slate-700 bg-slate-800/70 px-4 py-3 text-sm text-white placeholder-slate-500 transition-all outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3.5 text-sm font-medium text-zinc-900 placeholder-zinc-400 outline-none transition-all focus:border-zinc-900 focus:bg-white focus:ring-1 focus:ring-zinc-900"
               />
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-                <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
                 {error}
               </div>
             )}
@@ -131,15 +134,15 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all duration-200 hover:from-indigo-500 hover:to-purple-500 hover:shadow-indigo-500/40 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="mt-2 w-full rounded-xl bg-zinc-900 py-4 text-sm font-bold text-white shadow-[0_4px_14px_0_rgb(0,0,0,0.39)] transition-all hover:-translate-y-0.5 hover:bg-zinc-800 hover:shadow-[0_6px_20px_rgba(0,0,0,0.23)] disabled:pointer-events-none disabled:opacity-50"
             >
-              {loading ? 'Creating account…' : 'Sign Up'}
+              {loading ? 'Creating account...' : 'Sign Up'}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-slate-400">
+          <div className="mt-8 border-t border-zinc-100 pt-8 text-center text-sm font-medium text-zinc-500">
             Already have an account?{' '}
-            <Link href="/login" className="font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">
+            <Link href="/login" className="text-zinc-900 underline underline-offset-4 hover:text-zinc-700">
               Sign in
             </Link>
           </div>

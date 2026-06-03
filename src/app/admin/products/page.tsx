@@ -1,420 +1,263 @@
 'use client'
 
 // src/app/admin/products/page.tsx
-// Admin products page: full CRUD table with modal form.
+// Redesigned: Awwwards-style minimal product management
 
-import { useState, useEffect, FormEvent } from 'react'
-import type { Product, Category, Dimension, BaseUnit } from '@/types'
-import { formatINR, displayQty, COMPATIBLE_UNITS } from '@/lib/units'
+import { useEffect, useState } from 'react'
+import type { Product, BaseUnit } from '@/types'
+import { formatINR } from '@/lib/units'
 
-const DIMENSIONS: Dimension[] = ['weight', 'volume', 'count']
-
-interface ProductForm {
-  name: string
-  sku: string
-  description: string
-  category_id: string
-  dimension: Dimension
-  base_unit: BaseUnit
-  price_per_base_unit: string
-  stock_in_base_unit: string
-  min_order_qty: string
-}
-
-const defaultForm: ProductForm = {
-  name: '',
-  sku: '',
-  description: '',
-  category_id: '',
-  dimension: 'weight',
-  base_unit: 'g',
-  price_per_base_unit: '',
-  stock_in_base_unit: '',
-  min_order_qty: '1',
-}
-
-export default function AdminProductsPage() {
+export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editProduct, setEditProduct] = useState<Product | null>(null)
-  const [form, setForm] = useState<ProductForm>(defaultForm)
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [search, setSearch] = useState('')
-  const [filterDim, setFilterDim] = useState('')
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
 
-  useEffect(() => {
-    fetchAll()
-  }, [])
+  // Form state
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [name, setName] = useState('')
+  const [sku, setSku] = useState('')
+  const [categoryId, setCategoryId] = useState(1)
+  const [dimension, setDimension] = useState<'weight' | 'volume' | 'count'>('weight')
+  const [baseUnit, setBaseUnit] = useState<BaseUnit>('g')
+  const [pricePerBase, setPricePerBase] = useState('0')
 
-  async function fetchAll() {
-    setLoading(true)
-    try {
-      const [pr, cr] = await Promise.all([
-        fetch('/api/products'),
-        fetch('/api/categories'),
-      ])
-      const pd = await pr.json()
-      const cd = await cr.json()
-      setProducts(pd.products || [])
-      setCategories(cd.categories || [])
-    } finally {
-      setLoading(false)
-    }
+  async function fetchProducts() {
+    const res = await fetch('/api/products')
+    const data = await res.json()
+    setProducts(data.products || [])
+    setLoading(false)
   }
 
-  function openAdd() {
-    setEditProduct(null)
-    setForm(defaultForm)
+  useEffect(() => {
+    fetchProducts()
+  }, [])
+
+  function openNew() {
+    setEditingId(null)
+    setName('')
+    setSku('')
+    setCategoryId(1)
+    setDimension('weight')
+    setBaseUnit('g')
+    setPricePerBase('0')
     setError('')
     setModalOpen(true)
   }
 
   function openEdit(p: Product) {
-    setEditProduct(p)
-    setForm({
-      name: p.name,
-      sku: p.sku,
-      description: p.description || '',
-      category_id: p.category_id?.toString() || '',
-      dimension: p.dimension,
-      base_unit: p.base_unit,
-      price_per_base_unit: p.price_per_base_unit,
-      stock_in_base_unit: p.stock_in_base_unit,
-      min_order_qty: p.min_order_qty,
-    })
+    setEditingId(p.id)
+    setName(p.name)
+    setSku(p.sku)
+    setCategoryId(p.category_id || 1)
+    setDimension(p.dimension as any)
+    setBaseUnit(p.base_unit)
+    setPricePerBase(p.price_per_base_unit)
     setError('')
     setModalOpen(true)
   }
 
-  function handleDimChange(dim: Dimension) {
-    const units = COMPATIBLE_UNITS[dim]
-    setForm(f => ({ ...f, dimension: dim, base_unit: units[0] }))
-  }
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    setSaving(true)
-    setError('')
-    try {
-      const payload = {
-        ...form,
-        category_id: form.category_id ? parseInt(form.category_id) : null,
-        price_per_base_unit: parseFloat(form.price_per_base_unit),
-        stock_in_base_unit: parseFloat(form.stock_in_base_unit || '0'),
-        min_order_qty: parseFloat(form.min_order_qty || '1'),
-      }
-
-      const url = editProduct ? `/api/products/${editProduct.id}` : '/api/products'
-      const method = editProduct ? 'PUT' : 'POST'
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
+  async function saveProduct() {
+    const payload = { name, sku, category_id: categoryId, dimension, base_unit: baseUnit, price_per_base_unit: pricePerBase }
+    const url = editingId ? `/api/products/${editingId}` : '/api/products'
+    const method = editingId ? 'PUT' : 'POST'
+    
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    
+    if (!res.ok) {
       const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error || 'Failed to save')
-        return
-      }
-
-      setModalOpen(false)
-      fetchAll()
-    } finally {
-      setSaving(false)
+      setError(data.error || 'Failed to save')
+      return
     }
+    
+    setModalOpen(false)
+    fetchProducts()
   }
 
-  async function handleDelete(id: number) {
-    try {
-      await fetch(`/api/products/${id}`, { method: 'DELETE' })
-      setDeleteConfirm(null)
-      fetchAll()
-    } catch {
-      /* noop */
-    }
+  async function deleteProduct(id: number) {
+    if (!confirm('Are you sure you want to deactivate this product?')) return
+    await fetch(`/api/products/${id}`, { method: 'DELETE' })
+    fetchProducts()
   }
 
-  const filtered = products.filter(p => {
-    const matchSearch = !search ||
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku.toLowerCase().includes(search.toLowerCase())
-    const matchDim = !filterDim || p.dimension === filterDim
-    return matchSearch && matchDim
-  })
+  // Handle cascading dimension -> baseUnit changes
+  useEffect(() => {
+    if (dimension === 'weight' && baseUnit !== 'g' && baseUnit !== 'kg') setBaseUnit('g')
+    if (dimension === 'volume' && baseUnit !== 'mL' && baseUnit !== 'L') setBaseUnit('mL')
+    if (dimension === 'count') setBaseUnit('unit')
+  }, [dimension, baseUnit])
 
   return (
     <div>
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Products</h1>
-          <p className="mt-1 text-slate-400">Manage your product catalog</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900">Products</h1>
+          <p className="mt-2 text-sm font-medium text-zinc-500">Manage your inventory catalog</p>
         </div>
         <button
-          id="add-product-btn"
-          onClick={openAdd}
-          className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 hover:from-blue-500 hover:to-indigo-500 transition-all"
+          onClick={openNew}
+          className="flex items-center gap-2 rounded-xl bg-zinc-900 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-zinc-900/20 transition-all hover:-translate-y-0.5 hover:bg-zinc-800 hover:shadow-xl hover:shadow-zinc-900/30"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           Add Product
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-        <input
-          id="product-search"
-          type="text"
-          placeholder="Search by name or SKU…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="flex-1 rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-        />
-        <select
-          id="product-filter-dim"
-          value={filterDim}
-          onChange={e => setFilterDim(e.target.value)}
-          className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500"
-        >
-          <option value="">All Dimensions</option>
-          {DIMENSIONS.map(d => (
-            <option key={d} value={d} className="capitalize">{d}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Table */}
-      <div className="rounded-2xl border border-slate-700/60 bg-slate-800/60 shadow-xl backdrop-blur-sm overflow-hidden">
+      <div className="rounded-3xl border border-zinc-200 bg-white shadow-[0_2px_10px_rgb(0,0,0,0.02)] overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-slate-500">
-            <svg className="mr-3 h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+          <div className="flex h-64 items-center justify-center">
+            <svg className="h-8 w-8 animate-spin text-zinc-400" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            Loading products…
+          </div>
+        ) : products.length === 0 ? (
+          <div className="flex h-64 flex-col items-center justify-center text-zinc-500">
+            <p className="font-medium">No products found.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-700/60">
-                  {['SKU', 'Name', 'Category', 'Dimension', 'Base Unit', 'Price / Base', 'Stock', 'Min Qty', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      {h}
-                    </th>
-                  ))}
+                <tr className="bg-zinc-50/50 border-b border-zinc-100">
+                  <th className="px-6 py-4 font-semibold text-zinc-500 uppercase tracking-wider text-xs">Product Details</th>
+                  <th className="px-6 py-4 font-semibold text-zinc-500 uppercase tracking-wider text-xs">Dimension</th>
+                  <th className="px-6 py-4 font-semibold text-zinc-500 uppercase tracking-wider text-xs">Base Price</th>
+                  <th className="px-6 py-4 font-semibold text-zinc-500 uppercase tracking-wider text-xs text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="px-6 py-12 text-center text-slate-500">
-                      No products found
+              <tbody className="divide-y divide-zinc-100">
+                {products.map(p => (
+                  <tr key={p.id} className={`transition-colors hover:bg-zinc-50/50 ${!p.is_active ? 'opacity-50 grayscale' : ''}`}>
+                    <td className="px-6 py-4">
+                      <p className="font-bold text-zinc-900">{p.name}</p>
+                      <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mt-1">{p.sku}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center rounded-lg bg-zinc-100 px-2.5 py-1 text-xs font-bold text-zinc-600 uppercase tracking-wider">
+                        {p.dimension}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="font-bold text-zinc-900">{formatINR(parseFloat(p.price_per_base_unit))}</p>
+                      <p className="text-xs font-medium text-zinc-500">per {p.base_unit}</p>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {p.is_active ? (
+                        <div className="flex justify-end gap-3">
+                          <button onClick={() => openEdit(p)} className="text-zinc-400 hover:text-blue-600 transition-colors font-semibold">Edit</button>
+                          <button onClick={() => deleteProduct(p.id)} className="text-zinc-400 hover:text-red-500 transition-colors font-semibold">Delete</button>
+                        </div>
+                      ) : (
+                        <span className="text-xs font-bold text-red-500 uppercase tracking-wider bg-red-50 px-2 py-1 rounded">Inactive</span>
+                      )}
                     </td>
                   </tr>
-                ) : (
-                  filtered.map((p, i) => (
-                    <tr key={p.id} className={`${i !== filtered.length - 1 ? 'border-b border-slate-700/30' : ''} hover:bg-slate-700/20 transition-colors`}>
-                      <td className="px-4 py-3 font-mono text-xs text-slate-400">{p.sku}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-white">{p.name}</td>
-                      <td className="px-4 py-3 text-sm text-slate-400">{p.category_name || '—'}</td>
-                      <td className="px-4 py-3">
-                        <span className="rounded-full bg-slate-700 px-2.5 py-1 text-xs font-medium text-slate-300 capitalize">
-                          {p.dimension}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm font-mono text-slate-300">{p.base_unit}</td>
-                      <td className="px-4 py-3 text-sm font-semibold text-emerald-400">
-                        {formatINR(p.price_per_base_unit)}/{p.base_unit}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-300">
-                        {displayQty(p.stock_in_base_unit, p.base_unit)}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-300">
-                        {displayQty(p.min_order_qty, p.base_unit)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <button
-                            id={`edit-product-${p.id}`}
-                            onClick={() => openEdit(p)}
-                            className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-xs font-medium text-blue-400 hover:bg-blue-500/20 transition-colors"
-                          >
-                            Edit
-                          </button>
-                          {deleteConfirm === p.id ? (
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => handleDelete(p.id)}
-                                className="rounded-lg border border-red-500/40 bg-red-500/15 px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/25"
-                              >
-                                Confirm
-                              </button>
-                              <button
-                                onClick={() => setDeleteConfirm(null)}
-                                className="rounded-lg border border-slate-600 px-2.5 py-1.5 text-xs font-medium text-slate-400 hover:bg-slate-700"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              id={`delete-product-${p.id}`}
-                              onClick={() => setDeleteConfirm(p.id)}
-                              className="rounded-lg border border-red-500/20 bg-red-500/5 px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/15 transition-colors"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modern Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setModalOpen(false)} />
-          <div className="relative w-full max-w-2xl rounded-2xl border border-slate-700/60 bg-slate-900 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-700/60 px-6 py-4">
-              <h2 className="text-lg font-semibold text-white">
-                {editProduct ? 'Edit Product' : 'Add New Product'}
-              </h2>
-              <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/20 backdrop-blur-sm p-4">
+          <div className="w-full max-w-lg rounded-3xl border border-zinc-200 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-8">
+            <h2 className="mb-6 text-2xl font-extrabold tracking-tight text-zinc-900">
+              {editingId ? 'Edit Product' : 'Add Product'}
+            </h2>
+            
+            <div className="space-y-5">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-900 mb-2 uppercase tracking-wide">Product Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3.5 text-sm font-medium text-zinc-900 outline-none focus:border-zinc-900 focus:bg-white focus:ring-1 focus:ring-zinc-900"
+                  placeholder="e.g. Paracetamol 500mg"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-semibold text-zinc-900 mb-2 uppercase tracking-wide">SKU</label>
+                <input
+                  type="text"
+                  value={sku}
+                  onChange={e => setSku(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3.5 text-sm font-medium text-zinc-900 outline-none focus:border-zinc-900 focus:bg-white focus:ring-1 focus:ring-zinc-900"
+                  placeholder="PARA-500"
+                />
+              </div>
 
-            <form id="product-form" onSubmit={handleSubmit} className="p-6">
               <div className="grid grid-cols-2 gap-4">
-                {/* Name */}
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Product Name *</label>
-                  <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
-                </div>
-
-                {/* SKU */}
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">SKU *</label>
-                  <input required value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
-                </div>
-
-                {/* Category */}
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Category</label>
-                  <select value={form.category_id} onChange={e => setForm(f => ({ ...f, category_id: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500">
-                    <option value="">No category</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <label className="block text-xs font-semibold text-zinc-900 mb-2 uppercase tracking-wide">Dimension</label>
+                  <select
+                    value={dimension}
+                    onChange={e => setDimension(e.target.value as any)}
+                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3.5 text-sm font-medium text-zinc-900 outline-none focus:border-zinc-900 focus:bg-white focus:ring-1 focus:ring-zinc-900"
+                  >
+                    <option value="weight">Weight</option>
+                    <option value="volume">Volume</option>
+                    <option value="count">Count (Items)</option>
                   </select>
                 </div>
-
-                {/* Description */}
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Description</label>
-                  <textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500 resize-none" />
-                </div>
-
-                {/* Dimension */}
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Dimension *</label>
-                  <div className="flex gap-2">
-                    {DIMENSIONS.map(d => (
-                      <button key={d} type="button" onClick={() => handleDimChange(d)}
-                        className={`flex-1 rounded-xl border py-2.5 text-sm font-medium capitalize transition-all ${
-                          form.dimension === d
-                            ? 'border-blue-500 bg-blue-500/15 text-blue-400'
-                            : 'border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-600 hover:text-white'
-                        }`}>
-                        {d}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Base unit */}
-                <div className="col-span-2">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Base Unit *</label>
-                  <div className="flex gap-2">
-                    {COMPATIBLE_UNITS[form.dimension].map(u => (
-                      <button key={u} type="button" onClick={() => setForm(f => ({ ...f, base_unit: u }))}
-                        className={`rounded-xl border px-6 py-2.5 text-sm font-mono font-medium transition-all ${
-                          form.base_unit === u
-                            ? 'border-indigo-500 bg-indigo-500/15 text-indigo-400'
-                            : 'border-slate-700 bg-slate-800 text-slate-400 hover:border-slate-600 hover:text-white'
-                        }`}>
-                        {u}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Price */}
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                    Price per {form.base_unit} (₹) *
-                  </label>
-                  <input required type="number" step="0.000001" min="0" value={form.price_per_base_unit}
-                    onChange={e => setForm(f => ({ ...f, price_per_base_unit: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
-                </div>
-
-                {/* Stock */}
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                    Stock (in {form.base_unit})
-                  </label>
-                  <input type="number" step="0.000001" min="0" value={form.stock_in_base_unit}
-                    onChange={e => setForm(f => ({ ...f, stock_in_base_unit: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
-                </div>
-
-                {/* Min order qty */}
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                    Min Order Qty (in {form.base_unit})
-                  </label>
-                  <input type="number" step="0.000001" min="0" value={form.min_order_qty}
-                    onChange={e => setForm(f => ({ ...f, min_order_qty: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
+                  <label className="block text-xs font-semibold text-zinc-900 mb-2 uppercase tracking-wide">Base Unit</label>
+                  <select
+                    value={baseUnit}
+                    onChange={e => setBaseUnit(e.target.value as any)}
+                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3.5 text-sm font-medium text-zinc-900 outline-none focus:border-zinc-900 focus:bg-white focus:ring-1 focus:ring-zinc-900"
+                  >
+                    {dimension === 'weight' && <><option value="g">Grams (g)</option><option value="kg">Kilograms (kg)</option></>}
+                    {dimension === 'volume' && <><option value="mL">Milliliters (mL)</option><option value="L">Liters (L)</option></>}
+                    {dimension === 'count' && <option value="unit">Unit</option>}
+                  </select>
                 </div>
               </div>
 
-              {error && (
-                <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-                  {error}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-900 mb-2 uppercase tracking-wide">
+                  Price per Base Unit (₹)
+                </label>
+                <div className="flex items-center">
+                  <span className="rounded-l-xl border border-r-0 border-zinc-200 bg-zinc-100 px-4 py-3.5 text-zinc-500 font-bold">₹</span>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={pricePerBase}
+                    onChange={e => setPricePerBase(e.target.value)}
+                    className="w-full rounded-r-xl border border-zinc-200 bg-zinc-50/50 px-4 py-3.5 text-sm font-bold text-zinc-900 outline-none focus:border-zinc-900 focus:bg-white focus:ring-1 focus:ring-zinc-900"
+                  />
                 </div>
-              )}
-
-              <div className="mt-6 flex gap-3 justify-end">
-                <button type="button" onClick={() => setModalOpen(false)}
-                  className="rounded-xl border border-slate-600 px-5 py-2.5 text-sm font-medium text-slate-300 hover:bg-slate-800 transition-colors">
-                  Cancel
-                </button>
-                <button id="product-save-btn" type="submit" disabled={saving}
-                  className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 transition-all">
-                  {saving ? 'Saving…' : editProduct ? 'Update Product' : 'Create Product'}
-                </button>
+                <p className="mt-2 text-xs text-zinc-500 font-medium">This is the exact price stored in the database for 1 {baseUnit}.</p>
               </div>
-            </form>
+            </div>
+
+            {error && <p className="mt-4 text-sm font-semibold text-red-500">{error}</p>}
+            
+            <div className="mt-8 flex justify-end gap-3">
+              <button
+                onClick={() => setModalOpen(false)}
+                className="rounded-xl px-5 py-3 text-sm font-bold text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveProduct}
+                className="rounded-xl bg-zinc-900 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-zinc-900/20 transition-all hover:-translate-y-0.5 hover:bg-zinc-800 hover:shadow-xl hover:shadow-zinc-900/30"
+              >
+                Save Product
+              </button>
+            </div>
           </div>
         </div>
       )}
