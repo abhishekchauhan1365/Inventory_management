@@ -9,7 +9,7 @@ import { verifyToken } from '@/lib/auth'
 const COOKIE_NAME = 'medchem_session'
 
 // Routes that don't require authentication
-const PUBLIC_ROUTES = ['/login', '/api/auth/login']
+const PUBLIC_ROUTES = ['/login', '/signup', '/api/auth/login', '/api/auth/signup']
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
