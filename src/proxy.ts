@@ -1,5 +1,6 @@
-// src/middleware.ts
-// Route protection middleware. Redirects unauthenticated users to /login.
+// src/proxy.ts
+// Route protection proxy (replaces middleware.ts in Next.js 16+).
+// Redirects unauthenticated users to /login.
 // Redirects authenticated users away from /login to their role dashboard.
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -10,7 +11,7 @@ const COOKIE_NAME = 'medchem_session'
 // Routes that don't require authentication
 const PUBLIC_ROUTES = ['/login', '/api/auth/login']
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Allow public routes
@@ -72,7 +73,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico
-     * - public folder
+     * - public folder assets
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
