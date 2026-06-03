@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const users = await sql`
       SELECT id, email, password_hash, name, role
       FROM users
-      WHERE email = ${email.toLowerCase().trim()}
+      WHERE LOWER(email) = ${email.toLowerCase().trim()}
       LIMIT 1
     `
 
